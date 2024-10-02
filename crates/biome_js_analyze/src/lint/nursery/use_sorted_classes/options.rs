@@ -1,6 +1,6 @@
 use biome_deserialize::{
-    Deserializable, DeserializableTypes, DeserializableValue, DeserializationDiagnostic,
-    DeserializationVisitor, Text,
+    Deserializable, DeserializableContext, DeserializableTypes, DeserializableValue,
+    DeserializationDiagnostic, DeserializationVisitor, Text,
 };
 use biome_rowan::TextRange;
 #[cfg(feature = "schemars")]
@@ -57,11 +57,11 @@ const ALLOWED_OPTIONS: &[&str] = &["attributes", "functions"];
 
 impl Deserializable for UtilityClassSortingOptions {
     fn deserialize(
+        ctx: &mut impl DeserializableContext,
         value: &impl DeserializableValue,
         name: &str,
-        diagnostics: &mut Vec<DeserializationDiagnostic>,
     ) -> Option<Self> {
-        value.deserialize(UtilityClassSortingOptionsVisitor, name, diagnostics)
+        value.deserialize(ctx, UtilityClassSortingOptionsVisitor, name)
     }
 }
 
@@ -73,21 +73,21 @@ impl DeserializationVisitor for UtilityClassSortingOptionsVisitor {
 
     fn visit_map(
         self,
+        ctx: &mut impl DeserializableContext,
         members: impl Iterator<Item = Option<(impl DeserializableValue, impl DeserializableValue)>>,
         _range: TextRange,
         _name: &str,
-        diagnostics: &mut Vec<DeserializationDiagnostic>,
     ) -> Option<Self::Output> {
         let mut result = UtilityClassSortingOptions::default();
 
         for (key, value) in members.flatten() {
-            let Some(key_text) = Text::deserialize(&key, "", diagnostics) else {
+            let Some(key_text) = Text::deserialize(ctx, &key, "") else {
                 continue;
             };
             match key_text.text() {
                 "attributes" => {
                     if let Some(attributes_option) =
-                        Deserializable::deserialize(&value, &key_text, diagnostics)
+                        Deserializable::deserialize(ctx, &value, &key_text)
                     {
                         result
                             .attributes
@@ -96,9 +96,9 @@ impl DeserializationVisitor for UtilityClassSortingOptionsVisitor {
                     }
                 }
                 "functions" => {
-                    result.functions = Deserializable::deserialize(&value, &key_text, diagnostics)
+                    result.functions = Deserializable::deserialize(ctx, &value, &key_text)
                 }
-                unknown_key => diagnostics.push(DeserializationDiagnostic::new_unknown_key(
+                unknown_key => ctx.report(DeserializationDiagnostic::new_unknown_key(
                     unknown_key,
                     key.range(),
                     ALLOWED_OPTIONS,
