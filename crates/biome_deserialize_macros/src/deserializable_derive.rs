@@ -103,7 +103,6 @@ impl DeriveInput {
                                     deprecated: attrs.deprecated,
                                     ident,
                                     key,
-                                    passthrough_name: attrs.passthrough_name,
                                     required: attrs.required,
                                     ty,
                                     validate: attrs.validate,
@@ -198,7 +197,6 @@ pub struct DeserializableFieldData {
     deprecated: Option<DeprecatedField>,
     ident: Ident,
     key: String,
-    passthrough_name: bool,
     required: bool,
     ty: Type,
     validate: Option<Path>,
@@ -370,11 +368,6 @@ fn generate_deserializable_struct(
                 },
             });
 
-            let name = match field_data.passthrough_name {
-                true => quote! { name },
-                false => quote! { &key_text },
-            };
-
             let validate = field_data.validate.map(|path| {
                 quote! {
                     .filter(|v| #path(ctx, v, #key, value.range()))
@@ -389,7 +382,7 @@ fn generate_deserializable_struct(
 
             quote! {
                 #key => {
-                    match Deserializable::deserialize(ctx, &value, #name)#validate {
+                    match Deserializable::deserialize(ctx, &value, &key_text)#validate {
                         Some(value) => {
                             #deprecation_notice
                             result.#field_ident = value;
